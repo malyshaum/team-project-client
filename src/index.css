@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #6A43EB;
+  --color-brand-secondary: #2563EB;
+
+  /* Hero Section Gradient */
+  --color-hero-start: #6E41EB;
+  --color-hero-end: #2563EB;
+
+  /* Button Gradient */
+  --color-btn-start: #6A43EB;
+  --color-btn-end: #234D90;
+
+  --font-sans: 'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}
