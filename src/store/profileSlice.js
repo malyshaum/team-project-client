@@ -1,29 +1,23 @@
-import { createSlice } from '@reduxjs/toolkit';
-import { loginMock, logoutMock, registerMock } from './authSlice';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { apiRequest } from '../lib/api';
+import { mapMeResponseToProfile } from '../lib/adapters';
+import { loginMock, loginUser, logoutMock, logoutUser, registerMock, registerUser } from './authSlice';
 
-const createProfile = ({
-    username = 'student',
-    email = '',
-    university = 'Technical University',
-    studyProgram = 'General Studies',
-    yearOfStudy = '1',
-    contactInfo = '',
-    bio = 'New on QuestBoard.',
-    joined = 'Joined recently'
-} = {}) => ({
+const createEmptyProfile = () => ({
     general: {
-        username,
-        email,
-        university,
-        studyProgram,
-        yearOfStudy,
-        contactInfo,
-        bio,
-        joined
+        id: null,
+        username: 'student',
+        email: '',
+        university: 'University not specified',
+        studyProgram: 'General Studies',
+        yearOfStudy: '',
+        contactInfo: '',
+        bio: 'No bio yet.',
+        joined: 'Joined recently'
     },
     stats: {
-        requesterRating: 5,
-        providerRating: 5,
+        requesterRating: '0.0',
+        providerRating: '0.0',
         completedTasks: 0,
         completedAsRequester: 0,
         completedAsProvider: 0,
@@ -32,62 +26,57 @@ const createProfile = ({
             { label: 'Completed as provider', value: '0' },
             { label: 'Open posts', value: '0' },
             { label: 'In progress', value: '0' },
-            { label: 'Total earned', value: '€0', valueClass: 'text-brand-secondary' }
+            { label: 'Total earned', value: '0€', valueClass: 'text-brand-secondary' }
         ],
-        badges: ['New Member']
+        badges: ['QuestBoard Member']
     },
     activity: [],
     reviews: []
 });
 
-const alexProfile = {
-    general: {
-        username: 'alexm',
-        email: 'alex.martinez@university.edu',
-        university: 'Technical University',
-        studyProgram: 'Computer Science',
-        yearOfStudy: '2',
-        contactInfo: 'Telegram: @alexm, email: alex.martinez@university.edu',
-        bio: 'Passionate about coding, open to quick study exchanges, and usually available in the evening for task follow-up.',
-        joined: 'Joined September 2024'
-    },
-    stats: {
-        requesterRating: 4.8,
-        providerRating: 4.6,
-        completedTasks: 12,
-        completedAsRequester: 7,
-        completedAsProvider: 5,
-        reputation: [
-            { label: 'Completed as requester', value: '7' },
-            { label: 'Completed as provider', value: '5' },
-            { label: 'Open posts', value: '3' },
-            { label: 'In progress', value: '2' },
-            { label: 'Total earned', value: '€185', valueClass: 'text-brand-secondary' }
-        ],
-        badges: ['Quick Responder', 'Top Helper', 'Verified Student']
-    },
-    activity: [
-        { title: 'Debug React useEffect hook', details: 'For miket · 2 days ago', status: 'Completed', price: '€15' },
-        { title: 'Move sofa to 3rd floor', details: 'For emmaw · 1 week ago', status: 'Completed', price: '€20' },
-        { title: 'Fix Java Application', details: 'For alexm · Started today', status: 'In Progress', price: '€5' },
-        { title: 'Java Programming Help', details: 'Client annas · 1 day ago', status: 'In Progress', price: '€5' }
-    ],
-    reviews: [
-        { initials: 'MT', name: 'miket', time: '2 days ago', text: 'Super helpful. Fixed my React bug fast and explained the root cause clearly.', rating: 5, role: 'Provider', color: 'bg-blue-500' },
-        { initials: 'EW', name: 'emmaw', time: '1 week ago', text: 'Reliable and easy to coordinate with. Payment and communication were smooth.', rating: 5, role: 'Requester', color: 'bg-green-500' },
-        { initials: 'SJ', name: 'sarahj', time: '2 weeks ago', text: 'Good explanation of calculus concepts. Would recommend for homework help.', rating: 4, role: 'Provider', color: 'bg-amber-500' }
-    ]
-};
+export const fetchMyProfile = createAsyncThunk('profile/fetchMyProfile', async (_, thunkAPI) => {
+    try {
+        const [me, reviews, activeTasks] = await Promise.all([
+            apiRequest('/me'),
+            apiRequest('/me/reviews'),
+            apiRequest('/me/active-tasks')
+        ]);
+        return mapMeResponseToProfile(me, reviews, activeTasks);
+    } catch (error) {
+        return thunkAPI.rejectWithValue(error.message);
+    }
+});
 
+export const updateMyProfile = createAsyncThunk('profile/updateMyProfile', async (payload, thunkAPI) => {
+    try {
+        await apiRequest('/me', {
+            method: 'PATCH',
+            body: {
+                username: payload.username,
+                email: payload.email,
+                university: payload.university,
+                studyProgram: payload.studyProgram,
+                yearOfStudy: Number(payload.yearOfStudy),
+                contactInfo: payload.contactInfo,
+                aboutMe: payload.bio
+            }
+        });
+
+        return await thunkAPI.dispatch(fetchMyProfile()).unwrap();
+    } catch (error) {
+        return thunkAPI.rejectWithValue(error.message);
+    }
+});
+
+const initialProfile = createEmptyProfile();
 const initialState = {
     currentUserEmail: '',
-    general: alexProfile.general,
-    stats: alexProfile.stats,
-    activity: alexProfile.activity,
-    reviews: alexProfile.reviews,
-    profilesByEmail: {
-        'alex.martinez@university.edu': alexProfile
-    }
+    general: initialProfile.general,
+    stats: initialProfile.stats,
+    activity: initialProfile.activity,
+    reviews: initialProfile.reviews,
+    status: 'idle',
+    error: ''
 };
 
 const profileSlice = createSlice({
@@ -95,75 +84,68 @@ const profileSlice = createSlice({
     initialState,
     reducers: {
         updateProfileGeneral(state, action) {
-            const payload = action.payload;
-            const email = payload.email || state.currentUserEmail || state.general.email;
-            const existingProfile = state.profilesByEmail[email] || createProfile({ email });
-            const nextProfile = {
-                ...existingProfile,
-                general: {
-                    ...existingProfile.general,
-                    ...payload
-                }
+            state.general = {
+                ...state.general,
+                ...action.payload
             };
-
-            if (payload.previousEmail && payload.previousEmail !== email) {
-                delete state.profilesByEmail[payload.previousEmail];
-            }
-
-            state.profilesByEmail[email] = nextProfile;
-            state.currentUserEmail = email;
-            state.general = nextProfile.general;
-            state.stats = nextProfile.stats;
-            state.activity = nextProfile.activity;
-            state.reviews = nextProfile.reviews;
+            state.currentUserEmail = action.payload.email || state.currentUserEmail;
         }
     },
     extraReducers: (builder) => {
         builder
+            .addCase(fetchMyProfile.pending, (state) => {
+                state.status = 'loading';
+                state.error = '';
+            })
+            .addCase(fetchMyProfile.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                state.error = '';
+                state.general = action.payload.general;
+                state.stats = action.payload.stats;
+                state.activity = action.payload.activity;
+                state.reviews = action.payload.reviews;
+                state.currentUserEmail = action.payload.general.email;
+            })
+            .addCase(fetchMyProfile.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || 'Failed to load profile.';
+            })
+            .addCase(updateMyProfile.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                state.error = '';
+                state.general = action.payload.general;
+                state.stats = action.payload.stats;
+                state.activity = action.payload.activity;
+                state.reviews = action.payload.reviews;
+                state.currentUserEmail = action.payload.general.email;
+            })
             .addCase(loginMock, (state, action) => {
-                if (!action.payload.username) return;
-                const { email, username, studyProgram, yearOfStudy } = action.payload;
-                const profile = state.profilesByEmail[email] || createProfile({
-                    username,
-                    email,
-                    studyProgram,
-                    yearOfStudy,
-                    contactInfo: `Email: ${email}`,
-                    bio: 'New on QuestBoard.',
-                    joined: 'Joined recently'
-                });
-                state.profilesByEmail[email] = profile;
-                state.currentUserEmail = email;
-                state.general = profile.general;
-                state.stats = profile.stats;
-                state.activity = profile.activity;
-                state.reviews = profile.reviews;
+                state.currentUserEmail = action.payload.email || state.currentUserEmail;
             })
             .addCase(registerMock, (state, action) => {
-                const { username, email, studyProgram, yearOfStudy } = action.payload;
-                if (state.profilesByEmail[email]) return;
-                const profile = createProfile({
-                    username,
-                    email,
-                    studyProgram,
-                    yearOfStudy,
-                    contactInfo: `Email: ${email}`,
-                    bio: 'Tell others what kind of quests or services you usually post.',
-                    joined: 'Joined today'
-                });
-                state.profilesByEmail[email] = profile;
-                state.currentUserEmail = email;
-                state.general = profile.general;
-                state.stats = profile.stats;
-                state.activity = profile.activity;
-                state.reviews = profile.reviews;
+                state.currentUserEmail = action.payload.email || state.currentUserEmail;
+            })
+            .addCase(loginUser.fulfilled, (state, action) => {
+                state.currentUserEmail = action.payload.user?.email || state.currentUserEmail;
+            })
+            .addCase(registerUser.fulfilled, (state, action) => {
+                state.currentUserEmail = action.payload.user?.email || state.currentUserEmail;
             })
             .addCase(logoutMock, (state) => {
+                const empty = createEmptyProfile();
                 state.currentUserEmail = '';
-                state.general = createProfile().general;
-                state.stats = createProfile().stats;
-                state.activity = [];
-                state.reviews = [];
+                state.general = empty.general;
+                state.stats = empty.stats;
+                state.activity = empty.activity;
+                state.reviews = empty.reviews;
+            })
+            .addCase(logoutUser, (state) => {
+                const empty = createEmptyProfile();
+                state.currentUserEmail = '';
+                state.general = empty.general;
+                state.stats = empty.stats;
+                state.activity = empty.activity;
+                state.reviews = empty.reviews;
             });
     }
 });

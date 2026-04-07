@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import AuthLayout from './layouts/AuthLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -15,6 +15,7 @@ import ProviderBoard from './pages/ProviderBoard';
 import MyRequests from './pages/MyRequests';
 import ActiveTasks from './pages/ActiveTasks';
 import ManageRequest from './pages/ManageRequest';
+import { fetchMyProfile } from './store/profileSlice';
 
 const ProtectedRoute = () => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -27,6 +28,15 @@ const PublicOnlyRoute = () => {
 };
 
 function App() {
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchMyProfile());
+    }
+  }, [dispatch, isAuthenticated]);
+
   return (
     <BrowserRouter>
       <Routes>

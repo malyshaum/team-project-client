@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
+import { apiRequest } from '../lib/api';
+import { mapActiveTaskToCard } from '../lib/adapters';
 import { showToast } from '../store/uiSlice';
 
 const tabs = ['Quests I Accepted', 'Help I Requested'];
@@ -12,9 +14,32 @@ const statusClasses = {
 const ActiveTasks = () => {
     const dispatch = useDispatch();
     const [activeTab, setActiveTab] = useState(tabs[0]);
-    const items = useSelector((state) =>
-        activeTab === tabs[0] ? state.tasks.activeTasks.accepted : state.tasks.activeTasks.requested
-    );
+    const [tasks, setTasks] = React.useState({ accepted: [], requested: [] });
+
+    React.useEffect(() => {
+        let active = true;
+
+        const loadActiveTasks = async () => {
+            try {
+                const response = await apiRequest('/me/active-tasks');
+                if (active) {
+                    setTasks({
+                        accepted: (response.accepted || []).map(mapActiveTaskToCard),
+                        requested: (response.requested || []).map(mapActiveTaskToCard)
+                    });
+                }
+            } catch (error) {
+                dispatch(showToast({ title: error.message || 'Failed to load active tasks.', variant: 'error' }));
+            }
+        };
+
+        loadActiveTasks();
+        return () => {
+            active = false;
+        };
+    }, [dispatch]);
+
+    const items = activeTab === tabs[0] ? tasks.accepted : tasks.requested;
 
     return (
         <div className="mx-auto max-w-5xl">
@@ -40,6 +65,11 @@ const ActiveTasks = () => {
             </div>
 
             <div className="space-y-4">
+                {items.length === 0 && (
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                        No active tasks found.
+                    </div>
+                )}
                 {items.map((task) => (
                     <article key={task.id} className="rounded-2xl border border-gray-200 bg-white p-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -60,15 +90,30 @@ const ActiveTasks = () => {
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3">
                             <p className="text-gray-500">{task.dateLine}</p>
-                            {task.canReview && (
-                                <button
-                                    onClick={() => dispatch(showToast({ title: `Review modal for "${task.title}" opened (mock).`, variant: 'info' }))}
-                                    className="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2.5 font-medium text-gray-800 hover:bg-gray-50"
-                                >
-                                    <span className="mr-2">☆</span>
-                                    Leave Review
-                                </button>
-                            )}
+                            <button
+                                onClick={async () => {
+                                    const comment = window.prompt(`Leave a review for "${task.title}"`);
+                                    if (comment === null) {
+                                        return;
+                                    }
+                                    try {
+                                        await apiRequest(`/active-tasks/${task.id}/reviews`, {
+                                            method: 'POST',
+                                            body: {
+                                                stars: 5,
+                                                comment
+                                            }
+                                        });
+                                        dispatch(showToast({ title: 'Review submitted.', variant: 'success' }));
+                                    } catch (error) {
+                                        dispatch(showToast({ title: error.message || 'Failed to submit review.', variant: 'error' }));
+                                    }
+                                }}
+                                className="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2.5 font-medium text-gray-800 hover:bg-gray-50"
+                            >
+                                <span className="mr-2">☆</span>
+                                Leave Review
+                            </button>
                         </div>
                     </article>
                 ))}

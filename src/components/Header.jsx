@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { logoutMock } from '../store/authSlice';
+import { logoutUser } from '../store/authSlice';
 
 const NavLink = ({ to, children, pathname }) => {
     const isActive = pathname === to || (to !== '/' && pathname.startsWith(to));
@@ -20,7 +20,7 @@ const Header = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const username = useSelector((state) => state.profile.general.username);
-    const initials = username.slice(0, 2).toUpperCase() || 'US';
+    const initials = (username || 'US').slice(0, 2).toUpperCase() || 'US';
 
     return (
         <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -52,7 +52,7 @@ const Header = () => {
 
                         <button
                             onClick={() => {
-                                dispatch(logoutMock());
+                                dispatch(logoutUser());
                                 navigate('/login');
                             }}
                             className="rounded-md bg-black p-1 text-white hover:bg-gray-800"

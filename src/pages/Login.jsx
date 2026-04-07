@@ -3,27 +3,23 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { clearAuthError, loginMock } from '../store/authSlice';
-import { showToast } from '../store/uiSlice';
+import { clearAuthError, loginUser } from '../store/authSlice';
 
 const Login = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const authError = useSelector((state) => state.auth.error);
-    const users = useSelector((state) => state.auth.users);
+    const authStatus = useSelector((state) => state.auth.status);
     const [email, setEmail] = React.useState('alex.martinez@university.edu');
     const [password, setPassword] = React.useState('password123!');
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        const matchedUser = users.find((item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
-        dispatch(loginMock({
-            email,
-            password,
-            username: matchedUser?.username,
-            studyProgram: matchedUser?.studyProgram,
-            yearOfStudy: matchedUser?.yearOfStudy
-        }));
+        try {
+            await dispatch(loginUser({ email, password })).unwrap();
+        } catch {
+            // auth error is rendered from store state
+        }
     };
 
     React.useEffect(() => () => dispatch(clearAuthError()), [dispatch]);
@@ -54,40 +50,14 @@ const Login = () => {
                         </label>
                     </div>
 
-                    <div className="text-sm">
-                        <button
-                            type="button"
-                            onClick={() => dispatch(showToast({ title: 'Password reset sent (mock).', variant: 'info' }))}
-                            className="font-medium text-brand-primary hover:text-brand-secondary"
-                        >
-                            Forgot password?
-                        </button>
-                    </div>
+                    <p className="text-sm text-gray-500">Use your registered email and password.</p>
                 </div>
 
                 <div>
-                    <Button type="submit">Sign in</Button>
+                    <Button type="submit">{authStatus === 'loading' ? 'Signing in...' : 'Sign in'}</Button>
                 </div>
 
                 {authError && <p className="text-sm font-medium text-red-500">{authError}</p>}
-
-                <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="bg-white px-2 uppercase text-gray-500">Or continue with</span>
-                    </div>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={() => dispatch(showToast({ title: 'Google auth is mocked in this demo.', variant: 'info' }))}
-                    className="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-500 shadow-sm hover:bg-gray-50"
-                >
-                    <span className="ml-2">Google</span>
-                </button>
-
                 <div className="mt-6 text-center">
                     <p className="text-sm text-gray-600">
                         Don&apos;t have an account? <Link to="/register" className="font-medium text-brand-primary hover:text-brand-secondary">Sign up</Link>

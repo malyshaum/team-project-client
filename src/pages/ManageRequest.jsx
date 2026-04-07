@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { choosePerformer, deleteRequest, setRequestStatus } from '../store/tasksSlice';
+import { useDispatch } from 'react-redux';
+import { apiRequest } from '../lib/api';
+import { mapApplicantToCard, mapMyPostItemToRequest } from '../lib/adapters';
 import { showToast } from '../store/uiSlice';
 
 const ManageRequest = () => {
@@ -9,9 +10,29 @@ const ManageRequest = () => {
     const dispatch = useDispatch();
     const { id } = useParams();
     const requestId = Number(id);
+    const [request, setRequest] = React.useState(null);
+    const [applicants, setApplicants] = React.useState([]);
 
-    const request = useSelector((state) => state.tasks.myRequests.find((item) => item.id === requestId));
-    const applicants = useSelector((state) => state.tasks.applicantsByRequestId[requestId] || []);
+    const loadRequest = React.useCallback(async () => {
+        const [postsResponse, applicantsResponse] = await Promise.all([
+            apiRequest('/me/posts?limit=100&offset=0'),
+            apiRequest(`/posts/${requestId}/applicants`)
+        ]);
+
+        const requestItem = (postsResponse.items || []).find((item) => item.id === requestId);
+        setRequest(requestItem ? mapMyPostItemToRequest(requestItem) : null);
+        setApplicants((applicantsResponse || []).map(mapApplicantToCard));
+    }, [requestId]);
+
+    React.useEffect(() => {
+        loadRequest().catch((error) => {
+            dispatch(showToast({ title: error.message || 'Failed to load post management data.', variant: 'error' }));
+        });
+    }, [dispatch, loadRequest]);
+
+    if (!request) {
+        return <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading post...</div>;
+    }
 
     return (
         <div className="mx-auto max-w-5xl">
@@ -35,10 +56,11 @@ const ManageRequest = () => {
 
             <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap gap-3">
-                    <button
+                        <button
                         onClick={() => {
-                            dispatch(showToast({ title: 'Edit mode is mocked. Open the create form and re-save with new data.', variant: 'info' }));
-                            navigate(request?.type === 'service' ? '/create-service' : '/create-quest');
+                            navigate(request?.type === 'service' ? '/create-service' : '/create-quest', {
+                                state: { editPostId: requestId }
+                            });
                         }}
                         className="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2.5 text-xl font-medium text-gray-800 hover:bg-gray-50"
                     >
@@ -46,9 +68,17 @@ const ManageRequest = () => {
                         Edit Post
                     </button>
                     <button
-                        onClick={() => {
-                            dispatch(setRequestStatus({ requestId, status: 'Cancelled' }));
-                            dispatch(showToast({ title: 'Post status changed to Cancelled.', variant: 'warning' }));
+                        onClick={async () => {
+                            try {
+                                await apiRequest(`/posts/${requestId}`, {
+                                    method: 'PATCH',
+                                    body: { status: 'Cancelled' }
+                                });
+                                setRequest((current) => (current ? { ...current, status: 'Cancelled' } : current));
+                                dispatch(showToast({ title: 'Post status changed to Cancelled.', variant: 'warning' }));
+                            } catch (error) {
+                                dispatch(showToast({ title: error.message || 'Failed to cancel post.', variant: 'error' }));
+                            }
                         }}
                         className="inline-flex items-center rounded-xl border border-yellow-300 px-4 py-2.5 text-xl font-medium text-yellow-600 hover:bg-yellow-50"
                     >
@@ -56,10 +86,14 @@ const ManageRequest = () => {
                         Cancel Post
                     </button>
                     <button
-                        onClick={() => {
-                            dispatch(deleteRequest({ requestId }));
-                            dispatch(showToast({ title: 'Post deleted from mock store.', variant: 'error' }));
-                            navigate('/my-requests');
+                        onClick={async () => {
+                            try {
+                                await apiRequest(`/posts/${requestId}`, { method: 'DELETE' });
+                                dispatch(showToast({ title: 'Post deleted.', variant: 'error' }));
+                                navigate('/my-requests');
+                            } catch (error) {
+                                dispatch(showToast({ title: error.message || 'Failed to delete post.', variant: 'error' }));
+                            }
                         }}
                         className="inline-flex items-center rounded-xl border border-red-300 px-4 py-2.5 text-xl font-medium text-red-500 hover:bg-red-50"
                     >
@@ -98,10 +132,17 @@ const ManageRequest = () => {
 
                         <div className="mt-4 flex flex-wrap gap-2">
                             <button
-                                onClick={() => {
-                                    dispatch(choosePerformer({ requestId, applicantId: applicant.id }));
-                                    dispatch(showToast({ title: `${applicant.name} selected as performer.`, variant: 'success' }));
-                                    navigate('/my-requests');
+                                onClick={async () => {
+                                    try {
+                                        await apiRequest(`/posts/${requestId}/select-performer`, {
+                                            method: 'POST',
+                                            body: { applicantId: applicant.id }
+                                        });
+                                        dispatch(showToast({ title: `${applicant.name} selected as performer.`, variant: 'success' }));
+                                        navigate('/my-requests');
+                                    } catch (error) {
+                                        dispatch(showToast({ title: error.message || 'Failed to select performer.', variant: 'error' }));
+                                    }
                                 }}
                                 className="inline-flex items-center rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-5 py-2.5 text-xl font-medium text-white"
                             >

@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import Input from '../components/Input';
 import TextArea from '../components/TextArea';
 import Button from '../components/Button';
-import { updateProfileGeneral } from '../store/profileSlice';
-import { logoutMock } from '../store/authSlice';
+import { updateMyProfile } from '../store/profileSlice';
+import { logoutUser } from '../store/authSlice';
 import { showToast } from '../store/uiSlice';
 
 const EditProfile = () => {
@@ -14,14 +14,18 @@ const EditProfile = () => {
     const general = useSelector((state) => state.profile.general);
     const [generalForm, setGeneralForm] = useState(general);
 
-    const handleSave = () => {
-        dispatch(updateProfileGeneral({ ...generalForm, previousEmail: general.email }));
-        dispatch(showToast({ title: 'Profile updated in mock store.', variant: 'success' }));
-        navigate('/profile');
+    const handleSave = async () => {
+        try {
+            await dispatch(updateMyProfile(generalForm)).unwrap();
+            dispatch(showToast({ title: 'Profile updated.', variant: 'success' }));
+            navigate('/profile');
+        } catch (error) {
+            dispatch(showToast({ title: error || 'Failed to update profile.', variant: 'error' }));
+        }
     };
 
     const handleLogout = () => {
-        dispatch(logoutMock());
+        dispatch(logoutUser());
         navigate('/login');
     };
 

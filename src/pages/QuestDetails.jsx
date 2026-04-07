@@ -1,22 +1,66 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import SafetyTipCard from '../components/SafetyTipCard';
-import { claimQuest, setSelectedReward } from '../store/tasksSlice';
 import { showToast } from '../store/uiSlice';
+import { apiRequest } from '../lib/api';
+import { mapPostDetailToQuest } from '../lib/adapters';
 
 const rewardLabels = {
     primary: 'Primary Reward',
     alternative: 'Alternative Reward'
 };
 
+const ImageGrid = ({ images, altPrefix }) => {
+    if (!images?.length) {
+        return null;
+    }
+
+    return (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {images.map((image, index) => (
+                <img
+                    key={`${altPrefix}-${index}`}
+                    src={image}
+                    alt={`${altPrefix} ${index + 1}`}
+                    className="h-40 w-full rounded-2xl border border-gray-200 bg-gray-50 object-cover"
+                />
+            ))}
+        </div>
+    );
+};
+
 const QuestDetails = () => {
     const { id } = useParams();
-    const routeQuestId = Number(id);
     const dispatch = useDispatch();
     const [contactOpen, setContactOpen] = useState(false);
-    const quest = useSelector((state) => state.tasks.questsById[routeQuestId] || state.tasks.questsById[1]);
-    const selectedReward = useSelector((state) => state.tasks.selectedRewardByQuestId[quest.id] || 'primary');
+    const [quest, setQuest] = useState(null);
+    const [selectedReward, setSelectedReward] = useState('primary');
+    const [authorReviews, setAuthorReviews] = useState([]);
+
+    React.useEffect(() => {
+        let active = true;
+
+        const loadPost = async () => {
+            try {
+                const response = await apiRequest(`/posts/${id}`);
+                if (active) {
+                    setQuest(mapPostDetailToQuest(response));
+                }
+            } catch (error) {
+                dispatch(showToast({ title: error.message || 'Failed to load post details.', variant: 'error' }));
+            }
+        };
+
+        loadPost();
+        return () => {
+            active = false;
+        };
+    }, [dispatch, id]);
+
+    if (!quest) {
+        return <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading post...</div>;
+    }
 
     return (
         <div className="mx-auto max-w-6xl">
@@ -54,10 +98,7 @@ const QuestDetails = () => {
 
                     <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6">
                         <p className="whitespace-pre-line text-2xl leading-relaxed text-gray-600">{quest.description}</p>
-                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                            <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">Description image</div>
-                            <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">Description image</div>
-                        </div>
+                        <ImageGrid images={quest.images} altPrefix="Post image" />
                     </div>
 
                     <div className="mt-6">
@@ -66,7 +107,7 @@ const QuestDetails = () => {
                             {Object.entries(quest.rewards).map(([key, reward]) => (
                                 <button
                                     key={key}
-                                    onClick={() => dispatch(setSelectedReward({ questId: quest.id, rewardType: key }))}
+                                    onClick={() => setSelectedReward(key)}
                                     className={`rounded-2xl border p-5 text-left ${
                                         selectedReward === key ? 'border-brand-secondary ring-1 ring-brand-secondary' : 'border-gray-200 bg-white'
                                     }`}
@@ -74,9 +115,20 @@ const QuestDetails = () => {
                                     <p className="text-sm font-semibold uppercase tracking-wider text-gray-500">{rewardLabels[key]}</p>
                                     <p className="mt-2 text-3xl font-bold text-gray-900">{reward.value}</p>
                                     <p className="mt-1 text-gray-500">{reward.description}</p>
-                                    <div className="mt-4 flex h-20 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs text-gray-400">
-                                        Reward image
-                                    </div>
+                                    {reward.images?.length > 0 ? (
+                                        <div className="mt-4 grid gap-2">
+                                            {reward.images.map((image, index) => (
+                                                <img
+                                                    key={`${key}-${index}`}
+                                                    src={image}
+                                                    alt={`${rewardLabels[key]} ${index + 1}`}
+                                                    className="h-24 w-full rounded-xl border border-gray-200 bg-gray-50 object-cover"
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="mt-4 text-xs text-gray-400">No reward images attached.</p>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -84,16 +136,34 @@ const QuestDetails = () => {
 
                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                         <button
-                            onClick={() => {
-                                dispatch(claimQuest({ questId: quest.id }));
-                                dispatch(showToast({ title: 'Task claimed and added to Active Tasks.', variant: 'success' }));
+                            onClick={async () => {
+                                try {
+                                    await apiRequest(`/posts/${quest.id}/claim`, { method: 'POST' });
+                                    dispatch(showToast({ title: quest.type === 'service' ? 'Service booked.' : 'Task claimed.', variant: 'success' }));
+                                } catch (error) {
+                                    dispatch(showToast({ title: error.message || 'Failed to claim post.', variant: 'error' }));
+                                }
                             }}
                             className="rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-5 py-3 text-xl font-semibold text-white"
                         >
                             {quest.type === 'service' ? 'Book Service' : 'Claim Task'}
                         </button>
                         <button
-                            onClick={() => setContactOpen((current) => !current)}
+                            onClick={async () => {
+                                try {
+                                    const response = await apiRequest(`/posts/${quest.id}/contact`, { method: 'POST' });
+                                    setQuest((current) => ({
+                                        ...current,
+                                        author: {
+                                            ...current.author,
+                                            contactInfo: response.contactInfo || current.author.contactInfo
+                                        }
+                                    }));
+                                    setContactOpen((current) => !current);
+                                } catch (error) {
+                                    dispatch(showToast({ title: error.message || 'Failed to reveal contact info.', variant: 'error' }));
+                                }
+                            }}
                             className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-xl font-semibold text-gray-800 hover:bg-gray-50"
                         >
                             Contact Info
@@ -139,13 +209,30 @@ const QuestDetails = () => {
                             <div className="mb-2 flex items-center justify-between">
                                 <h4 className="text-sm font-bold uppercase tracking-wider text-gray-500">About Me</h4>
                                 <button
-                                    onClick={() => dispatch(showToast({ title: `Reviews list for ${quest.author.name} is mocked (${quest.author.reviews} reviews).`, variant: 'info' }))}
+                                    onClick={async () => {
+                                        try {
+                                            const response = await apiRequest(`/users/${quest.author.id}/reviews`, { token: '' });
+                                            setAuthorReviews(response || []);
+                                        } catch (error) {
+                                            dispatch(showToast({ title: error.message || 'Failed to load reviews.', variant: 'error' }));
+                                        }
+                                    }}
                                     className="text-sm font-medium text-brand-secondary"
                                 >
                                     Reviews ({quest.author.reviews})
                                 </button>
                             </div>
                             <p className="text-sm leading-6 text-gray-700">{quest.author.aboutMe}</p>
+                            {authorReviews.length > 0 && (
+                                <div className="mt-4 space-y-3 border-t border-gray-200 pt-4">
+                                    {authorReviews.slice(0, 3).map((review) => (
+                                        <div key={review.ratingId} className="rounded-lg bg-white p-3">
+                                            <p className="text-sm font-medium text-gray-900">{review.raterNickname} · {'★'.repeat(review.stars || 0)}</p>
+                                            <p className="mt-1 text-sm text-gray-600">{review.comment || 'No comment left.'}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {quest.author.recentPosts?.length > 0 && (

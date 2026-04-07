@@ -20,7 +20,7 @@ const StatCard = ({ title, children }) => (
 const Profile = () => {
     const [activeTab, setActiveTab] = useState('Activity');
     const { general, stats, activity, reviews } = useSelector((state) => state.profile);
-    const initials = general.username.slice(0, 2).toUpperCase();
+    const initials = (general.username || 'US').slice(0, 2).toUpperCase();
     const averageRating = useMemo(() => {
         const total = reviews.reduce((sum, item) => sum + item.rating, 0);
         return reviews.length ? (total / reviews.length).toFixed(1) : '0.0';

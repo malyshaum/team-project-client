@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import Button from '../components/Button';
 import ProviderCard from '../components/ProviderCard';
+import { apiRequest } from '../lib/api';
+import { mapPostListItemToCard } from '../lib/adapters';
+import { showToast } from '../store/uiSlice';
 
 const FILTERS = ['All', 'Coding', 'Writing', 'Errands', 'Design', 'Tutoring', 'Moving'];
 const SORTS = ['Newest', 'Lowest Reward', 'Highest Rated'];
@@ -10,10 +13,37 @@ const SORTS = ['Newest', 'Lowest Reward', 'Highest Rated'];
 const parsePrice = (value = '') => Number(value.replace(/[^\d.]/g, '')) || 0;
 
 const ProviderBoard = () => {
-    const providers = useSelector((state) => state.tasks.providers);
+    const dispatch = useDispatch();
+    const [providers, setProviders] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
     const [activeFilter, setActiveFilter] = useState('All');
     const [sort, setSort] = useState('Newest');
     const [search, setSearch] = useState('');
+
+    React.useEffect(() => {
+        let active = true;
+
+        const loadProviders = async () => {
+            setLoading(true);
+            try {
+                const response = await apiRequest('/posts?type=service&limit=100&offset=0');
+                if (active) {
+                    setProviders((response.items || []).map(mapPostListItemToCard));
+                }
+            } catch (error) {
+                dispatch(showToast({ title: error.message || 'Failed to load services.', variant: 'error' }));
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadProviders();
+        return () => {
+            active = false;
+        };
+    }, [dispatch]);
 
     const filtered = useMemo(() => {
         let list = [...providers];
@@ -92,6 +122,11 @@ const ProviderBoard = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {!loading && filtered.length === 0 && (
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                        No services found.
+                    </div>
+                )}
                 {filtered.map((provider) => (
                     <ProviderCard key={provider.id} provider={provider} />
                 ))}

@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import Button from '../components/Button';
 import QuestCard from '../components/QuestCard';
+import { apiRequest } from '../lib/api';
+import { mapPostListItemToCard } from '../lib/adapters';
+import { showToast } from '../store/uiSlice';
 
 const FILTERS = ['All', 'Coding', 'Writing', 'Errands', 'Design', 'Tutoring', 'Homework', 'Moving', 'Urgent'];
 const SORTS = ['Newest', 'Most Applied', 'Highest Reward'];
@@ -10,10 +13,37 @@ const SORTS = ['Newest', 'Most Applied', 'Highest Reward'];
 const parseReward = (value = '') => Number(value.replace(/[^\d.]/g, '')) || 0;
 
 const QuestBoard = () => {
-    const quests = useSelector((state) => state.tasks.publicQuests);
+    const dispatch = useDispatch();
+    const [quests, setQuests] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
     const [activeFilter, setActiveFilter] = useState('All');
     const [sort, setSort] = useState('Newest');
     const [search, setSearch] = useState('');
+
+    React.useEffect(() => {
+        let active = true;
+
+        const loadQuests = async () => {
+            setLoading(true);
+            try {
+                const response = await apiRequest('/posts?type=quest&limit=100&offset=0');
+                if (active) {
+                    setQuests((response.items || []).map(mapPostListItemToCard));
+                }
+            } catch (error) {
+                dispatch(showToast({ title: error.message || 'Failed to load quests.', variant: 'error' }));
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadQuests();
+        return () => {
+            active = false;
+        };
+    }, [dispatch]);
 
     const filtered = useMemo(() => {
         let list = [...quests];
@@ -92,6 +122,11 @@ const QuestBoard = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {!loading && filtered.length === 0 && (
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                        No quests found.
+                    </div>
+                )}
                 {filtered.map((quest) => (
                     <QuestCard key={quest.id} quest={quest} />
                 ))}

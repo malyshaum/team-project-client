@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import Input from '../components/Input';
 import TextArea from '../components/TextArea';
 import FileUpload from '../components/FileUpload';
 import TagSelector from '../components/TagSelector';
-import { addQuest } from '../store/tasksSlice';
 import { showToast } from '../store/uiSlice';
+import { apiFormRequest, apiRequest } from '../lib/api';
 
-const TAGS = ['Coding', 'Writing', 'Errands', 'Design', 'Tutoring', 'Homework', 'Moving', 'Urgent'];
-
-const UploadCard = ({ title }) => (
+const UploadCard = ({ title, children }) => (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <h3 className="mb-1 text-lg font-semibold text-gray-900">{title}</h3>
         <p className="mb-4 text-sm text-gray-500">Optional images</p>
-        <FileUpload className="h-32 w-full p-4" />
+        {children}
     </div>
 );
 
 const CreateQuest = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const dispatch = useDispatch();
-    const profile = useSelector((state) => state.profile.general);
+    const editPostId = location.state?.editPostId || null;
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -29,30 +28,102 @@ const CreateQuest = () => {
         reward: '',
         alternativeReward: ''
     });
+    const [availableTags, setAvailableTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState([]);
+    const [files, setFiles] = useState({
+        description: null,
+        reward1: null,
+        reward2: null
+    });
 
-    const handlePublish = () => {
+    React.useEffect(() => {
+        let active = true;
+
+        const loadInitialData = async () => {
+            try {
+                const [tagsResponse, postResponse] = await Promise.all([
+                    apiRequest('/tags'),
+                    editPostId ? apiRequest(`/posts/${editPostId}`) : Promise.resolve(null)
+                ]);
+
+                if (!active) {
+                    return;
+                }
+
+                setAvailableTags((tagsResponse || []).map((item) => item.tagName));
+
+                if (postResponse) {
+                    setForm({
+                        title: postResponse.title || '',
+                        description: postResponse.description || '',
+                        dueDate: postResponse.deadline ? new Date(postResponse.deadline).toISOString().slice(0, 16) : '',
+                        reward: postResponse.primaryReward?.value || '',
+                        alternativeReward: postResponse.alternativeReward?.value || ''
+                    });
+                    setSelectedTags(postResponse.tags || []);
+                }
+            } catch (error) {
+                dispatch(showToast({ title: error.message || 'Failed to load form data.', variant: 'error' }));
+            }
+        };
+
+        loadInitialData();
+        return () => {
+            active = false;
+        };
+    }, [dispatch, editPostId]);
+
+    const uploadSelectedImages = async (postId) => {
+        const uploads = [
+            { section: 'DESCRIPTION', file: files.description },
+            { section: 'REWARD1', file: files.reward1 },
+            { section: 'REWARD2', file: files.reward2 }
+        ].filter((item) => item.file);
+
+        await Promise.all(
+            uploads.map(({ section, file }) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                return apiFormRequest(`/posts/${postId}/images?section=${section}`, {
+                    method: 'POST',
+                    formData
+                });
+            })
+        );
+    };
+
+    const handlePublish = async () => {
         if (!form.title.trim() || !form.description.trim() || !form.reward.trim()) {
             dispatch(showToast({ title: 'Fill title, description, and main reward before publishing.', variant: 'warning' }));
             return;
         }
-        dispatch(
-            addQuest({
+
+        const parsedDeadline = form.dueDate ? new Date(form.dueDate) : null;
+        if (parsedDeadline && Number.isNaN(parsedDeadline.getTime())) {
+            dispatch(showToast({ title: 'Use a valid due date and time.', variant: 'warning' }));
+            return;
+        }
+
+        try {
+            const payload = {
+                type: 'quest',
                 title: form.title,
                 description: form.description,
-                dueDate: form.dueDate,
-                reward: form.reward,
-                alternativeReward: form.alternativeReward || 'Optional reward',
-                tags: selectedTags,
-                username: profile.username,
-                studyProgram: profile.studyProgram,
-                yearOfStudy: profile.yearOfStudy,
-                aboutMe: profile.bio,
-                contactInfo: profile.contactInfo
-            })
-        );
-        navigate('/my-requests');
-        dispatch(showToast({ title: 'Quest post published to mock store.', variant: 'success' }));
+                deadline: parsedDeadline ? parsedDeadline.toISOString() : undefined,
+                primaryReward: form.reward,
+                alternativeReward: form.alternativeReward || undefined,
+                tags: selectedTags
+            };
+            const response = await apiRequest(editPostId ? `/posts/${editPostId}` : '/posts/quests', {
+                method: editPostId ? 'PATCH' : 'POST',
+                body: payload
+            });
+            await uploadSelectedImages(response.id);
+            navigate('/quests');
+            dispatch(showToast({ title: editPostId ? 'Quest updated.' : 'Quest post published.', variant: 'success' }));
+        } catch (error) {
+            dispatch(showToast({ title: error.message || 'Failed to publish quest.', variant: 'error' }));
+        }
     };
 
     return (
@@ -72,19 +143,21 @@ const CreateQuest = () => {
 
                     <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Fix my Java Application" />
                     <TextArea label="Task Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={6} />
-                    <Input label="Due Date" type="text" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} placeholder="Tomorrow / Dec 15 / Flexible" />
+                    <Input label="Due Date" type="datetime-local" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
                 </div>
 
                 <div className="rounded-2xl border border-gray-200 bg-white p-8">
                     <h2 className="mb-1 text-lg font-semibold text-gray-900">Tags</h2>
                     <TagSelector
-                        options={TAGS}
+                        options={availableTags}
                         selectedTags={selectedTags}
                         onToggle={(tag) => setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]))}
                     />
                 </div>
 
-                <UploadCard title="Description Images" />
+                <UploadCard title="Description Images">
+                    <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, description: e.target.files?.[0] || null }))} />
+                </UploadCard>
 
                 <div className="grid gap-6 md:grid-cols-2">
                     <div className="rounded-2xl border border-gray-200 bg-white p-8">
@@ -108,13 +181,17 @@ const CreateQuest = () => {
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">
-                    <UploadCard title="Primary Reward Images" />
-                    <UploadCard title="Alternative Reward Images" />
+                    <UploadCard title="Primary Reward Images">
+                        <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, reward1: e.target.files?.[0] || null }))} />
+                    </UploadCard>
+                    <UploadCard title="Alternative Reward Images">
+                        <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, reward2: e.target.files?.[0] || null }))} />
+                    </UploadCard>
                 </div>
 
                 <div className="flex items-center justify-end gap-4 rounded-2xl border border-gray-200 bg-white p-6">
                     <button onClick={() => navigate('/quests')} className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700">Cancel</button>
-                    <button onClick={handlePublish} className="rounded-lg bg-brand-primary px-6 py-2.5 text-sm font-medium text-white">Publish Quest</button>
+                    <button onClick={handlePublish} className="rounded-lg bg-brand-primary px-6 py-2.5 text-sm font-medium text-white">{editPostId ? 'Save Quest' : 'Publish Quest'}</button>
                 </div>
             </div>
         </div>
