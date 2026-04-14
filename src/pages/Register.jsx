@@ -86,12 +86,14 @@ const Register = () => {
                     By creating an account, you confirm that the information you provide is accurate and can be used for matching tasks and services inside the platform.
                 </div>
 
+                {/* Temporarily hidden until terms acceptance is enforced in the auth flow.
                 <div className="flex items-center">
                     <input id="terms" name="terms" type="checkbox" className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary" />
                     <label htmlFor="terms" className="ml-2 block text-sm text-gray-600">
                         I agree to the platform rules and consent to storing my account information for service operation.
                     </label>
                 </div>
+                */}
 
                 <div>
                     <Button type="submit">{authStatus === 'loading' ? 'Creating...' : 'Create account'}</Button>

@@ -15,6 +15,7 @@ const ActiveTasks = () => {
     const dispatch = useDispatch();
     const [activeTab, setActiveTab] = useState(tabs[0]);
     const [tasks, setTasks] = React.useState({ accepted: [], requested: [] });
+    const [busyTaskId, setBusyTaskId] = React.useState(null);
 
     React.useEffect(() => {
         let active = true;
@@ -90,30 +91,69 @@ const ActiveTasks = () => {
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3">
                             <p className="text-gray-500">{task.dateLine}</p>
-                            <button
-                                onClick={async () => {
-                                    const comment = window.prompt(`Leave a review for "${task.title}"`);
-                                    if (comment === null) {
-                                        return;
-                                    }
-                                    try {
-                                        await apiRequest(`/active-tasks/${task.id}/reviews`, {
-                                            method: 'POST',
-                                            body: {
-                                                stars: 5,
-                                                comment
+                            <div className="flex flex-wrap items-center gap-2">
+                                {activeTab === tabs[1] && task.canComplete && (
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                setBusyTaskId(task.id);
+                                                await apiRequest(`/interactions/${task.id}/complete`, {
+                                                    method: 'POST'
+                                                });
+                                                setTasks((current) => ({
+                                                    ...current,
+                                                    requested: current.requested.map((item) => (
+                                                        item.id === task.id
+                                                            ? { ...item, status: 'Completed', canComplete: false, canReview: true, dateLine: 'Completed just now' }
+                                                            : item
+                                                    ))
+                                                }));
+                                                dispatch(showToast({ title: 'Task marked as completed.', variant: 'success' }));
+                                            } catch (error) {
+                                                dispatch(showToast({ title: error.message || 'Failed to complete task.', variant: 'error' }));
+                                            } finally {
+                                                setBusyTaskId(null);
                                             }
-                                        });
-                                        dispatch(showToast({ title: 'Review submitted.', variant: 'success' }));
-                                    } catch (error) {
-                                        dispatch(showToast({ title: error.message || 'Failed to submit review.', variant: 'error' }));
-                                    }
-                                }}
-                                className="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2.5 font-medium text-gray-800 hover:bg-gray-50"
-                            >
-                                <span className="mr-2">☆</span>
-                                Leave Review
-                            </button>
+                                        }}
+                                        disabled={busyTaskId === task.id}
+                                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-4 py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {busyTaskId === task.id ? 'Completing...' : 'Mark Completed'}
+                                    </button>
+                                )}
+                                <button
+                                    disabled={!task.canReview || busyTaskId === task.id}
+                                    onClick={async () => {
+                                        if (!task.canReview) {
+                                            dispatch(showToast({ title: 'Reviews are available only after the task is completed.', variant: 'warning' }));
+                                            return;
+                                        }
+                                        const comment = window.prompt(`Leave a review for "${task.title}"`);
+                                        if (comment === null) {
+                                            return;
+                                        }
+                                        try {
+                                            setBusyTaskId(task.id);
+                                            await apiRequest(`/active-tasks/${task.id}/reviews`, {
+                                                method: 'POST',
+                                                body: {
+                                                    stars: 5,
+                                                    comment
+                                                }
+                                            });
+                                            dispatch(showToast({ title: 'Review submitted.', variant: 'success' }));
+                                        } catch (error) {
+                                            dispatch(showToast({ title: error.message || 'Failed to submit review.', variant: 'error' }));
+                                        } finally {
+                                            setBusyTaskId(null);
+                                        }
+                                    }}
+                                    className="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2.5 font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <span className="mr-2">☆</span>
+                                    Leave Review
+                                </button>
+                            </div>
                         </div>
                     </article>
                 ))}

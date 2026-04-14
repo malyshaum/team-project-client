@@ -18,6 +18,26 @@ const formatAuthorMeta = (studyProgram, yearOfStudy) =>
 
 const formatCurrencyLike = (value) => value || 'Not specified';
 
+const normalizeStatus = (value, fallback = 'Open') => {
+    if (!value) {
+        return fallback;
+    }
+
+    const normalized = String(value).trim().toLowerCase();
+    const statusMap = {
+        active: 'Open',
+        open: 'Open',
+        in_progress: 'In Progress',
+        'in progress': 'In Progress',
+        completed: 'Completed',
+        archived: 'Cancelled',
+        cancelled: 'Cancelled',
+        canceled: 'Cancelled'
+    };
+
+    return statusMap[normalized] || value;
+};
+
 const formatDateLabel = (iso, prefix = '') => {
     if (!iso) {
         return 'Flexible';
@@ -63,6 +83,7 @@ const formatRelative = (iso, fallback = 'just now') => {
 
 export const mapPostListItemToCard = (post) => {
     const authorName = post.author?.username || 'student';
+    const status = normalizeStatus(post.status);
     return {
         id: post.id,
         type: post.type,
@@ -82,17 +103,20 @@ export const mapPostListItemToCard = (post) => {
         applicants: post.applicantsCount || 0,
         reward: formatCurrencyLike(post.primaryReward),
         alternativeReward: post.alternativeReward || 'Optional reward',
-        status: post.status
+        status,
+        rawStatus: post.status
     };
 };
 
 export const mapPostDetailToQuest = (post) => {
     const authorName = post.author?.username || 'student';
+    const status = normalizeStatus(post.status);
     return {
         id: post.id,
         type: post.type,
         title: post.title,
-        status: post.status,
+        status,
+        rawStatus: post.status,
         postedTime: `Posted ${formatRelative(post.postedAt, 'recently')}`,
         deadline: formatDateLabel(post.deadline, 'Due '),
         description: post.description,
@@ -125,22 +149,15 @@ export const mapPostDetailToQuest = (post) => {
     };
 };
 
-const statusClassMap = {
-    Open: 'Open',
-    'In Progress': 'In Progress',
-    Completed: 'Completed',
-    Cancelled: 'Cancelled'
-};
-
 export const mapMeResponseToProfile = (me, reviews = [], activeTasks = { accepted: [], requested: [] }) => {
     const accepted = activeTasks.accepted || [];
     const requested = activeTasks.requested || [];
-    const activity = [...accepted, ...requested].map((item) => ({
+        const activity = [...accepted, ...requested].map((item) => ({
         title: item.title,
         details: item.counterparty?.username
             ? `${accepted.includes(item) ? 'For' : 'With'} ${item.counterparty.username}`
             : 'QuestBoard activity',
-        status: statusClassMap[item.status] || item.status || 'In Progress',
+        status: normalizeStatus(item.status, 'In Progress'),
         price: item.amount || 'Not specified'
     }));
 
@@ -188,7 +205,8 @@ export const mapMyPostItemToRequest = (post) => ({
     id: post.id,
     type: post.type,
     title: post.title,
-    status: post.status,
+    status: normalizeStatus(post.status),
+    rawStatus: post.status,
     postedDate: formatRelative(post.postedAt, 'just now'),
     dueDate: formatDateLabel(post.deadline, ''),
     applicants: post.applicantsCount || 0,
@@ -218,7 +236,10 @@ export const mapActiveTaskToCard = (task) => ({
     title: task.title,
     subtitle: task.counterparty?.username ? `With ${task.counterparty.username}` : 'QuestBoard task',
     rating: Number(task.counterparty?.rating || 0).toFixed(1),
-    status: task.status,
+    status: normalizeStatus(task.status, 'In Progress'),
+    rawStatus: task.status,
+    canReview: normalizeStatus(task.status, 'In Progress') === 'Completed',
+    canComplete: normalizeStatus(task.status, 'In Progress') === 'In Progress',
     amount: task.amount || 'Not specified',
     dateLine: task.startedAt ? `Started ${formatRelative(task.startedAt, 'recently')}` : 'Started recently'
 });

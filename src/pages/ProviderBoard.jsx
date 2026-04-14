@@ -46,7 +46,7 @@ const ProviderBoard = () => {
     }, [dispatch]);
 
     const filtered = useMemo(() => {
-        let list = [...providers];
+        let list = providers.filter((provider) => provider.status === 'Open');
         if (activeFilter !== 'All') {
             list = list.filter((provider) => provider.tags.includes(activeFilter));
         }
@@ -61,7 +61,20 @@ const ProviderBoard = () => {
         }
 
         if (sort === 'Lowest Reward') {
-            list.sort((a, b) => parsePrice(a.reward) - parsePrice(b.reward));
+            list.sort((a, b) => {
+                const left = parsePrice(a.reward);
+                const right = parsePrice(b.reward);
+                if (!left && !right) {
+                    return b.id - a.id;
+                }
+                if (!left) {
+                    return 1;
+                }
+                if (!right) {
+                    return -1;
+                }
+                return left - right;
+            });
         } else if (sort === 'Highest Rated') {
             list.sort((a, b) => b.providerRating - a.providerRating);
         } else {

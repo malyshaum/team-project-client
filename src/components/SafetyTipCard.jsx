@@ -10,7 +10,7 @@ const SafetyTipCard = () => {
                 <div>
                     <h4 className="text-sm font-bold text-gray-900 mb-1">Safety Tip</h4>
                     <p className="text-sm text-gray-600 leading-relaxed">
-                        Always communicate through QuestBoard until the task is claimed. Payments are held in escrow.
+                        Confirm the reward, deadline, and task details clearly before starting. QuestBoard does not process payments, so users arrange payment terms directly.
                     </p>
                 </div>
             </div>

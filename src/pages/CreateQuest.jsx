@@ -35,6 +35,7 @@ const CreateQuest = () => {
         reward1: null,
         reward2: null
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     React.useEffect(() => {
         let active = true;
@@ -80,19 +81,21 @@ const CreateQuest = () => {
             { section: 'REWARD2', file: files.reward2 }
         ].filter((item) => item.file);
 
-        await Promise.all(
-            uploads.map(({ section, file }) => {
-                const formData = new FormData();
-                formData.append('file', file);
-                return apiFormRequest(`/posts/${postId}/images?section=${section}`, {
-                    method: 'POST',
-                    formData
-                });
-            })
-        );
+        for (const { section, file } of uploads) {
+            const formData = new FormData();
+            formData.append('file', file);
+            await apiFormRequest(`/posts/${postId}/images?section=${section}`, {
+                method: 'POST',
+                formData
+            });
+        }
     };
 
     const handlePublish = async () => {
+        if (isSubmitting) {
+            return;
+        }
+
         if (!form.title.trim() || !form.description.trim() || !form.reward.trim()) {
             dispatch(showToast({ title: 'Fill title, description, and main reward before publishing.', variant: 'warning' }));
             return;
@@ -105,6 +108,7 @@ const CreateQuest = () => {
         }
 
         try {
+            setIsSubmitting(true);
             const payload = {
                 type: 'quest',
                 title: form.title,
@@ -123,6 +127,8 @@ const CreateQuest = () => {
             dispatch(showToast({ title: editPostId ? 'Quest updated.' : 'Quest post published.', variant: 'success' }));
         } catch (error) {
             dispatch(showToast({ title: error.message || 'Failed to publish quest.', variant: 'error' }));
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -148,6 +154,7 @@ const CreateQuest = () => {
 
                 <div className="rounded-2xl border border-gray-200 bg-white p-8">
                     <h2 className="mb-1 text-lg font-semibold text-gray-900">Tags</h2>
+                    <p className="mb-4 text-sm text-gray-500">{selectedTags.length ? `${selectedTags.length} tag(s) selected` : 'Pick tags so the post appears in board filters.'}</p>
                     <TagSelector
                         options={availableTags}
                         selectedTags={selectedTags}
@@ -155,9 +162,15 @@ const CreateQuest = () => {
                     />
                 </div>
 
+                {/* Temporarily hidden until image uploads are stable in production.
                 <UploadCard title="Description Images">
-                    <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, description: e.target.files?.[0] || null }))} />
+                    <FileUpload
+                        className="h-32 w-full p-4"
+                        fileName={files.description?.name || ''}
+                        onChange={(e) => setFiles((current) => ({ ...current, description: e.target.files?.[0] || null }))}
+                    />
                 </UploadCard>
+                */}
 
                 <div className="grid gap-6 md:grid-cols-2">
                     <div className="rounded-2xl border border-gray-200 bg-white p-8">
@@ -180,18 +193,28 @@ const CreateQuest = () => {
                     </div>
                 </div>
 
+                {/* Temporarily hidden until image uploads are stable in production.
                 <div className="grid gap-6 md:grid-cols-2">
                     <UploadCard title="Primary Reward Images">
-                        <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, reward1: e.target.files?.[0] || null }))} />
+                        <FileUpload
+                            className="h-32 w-full p-4"
+                            fileName={files.reward1?.name || ''}
+                            onChange={(e) => setFiles((current) => ({ ...current, reward1: e.target.files?.[0] || null }))}
+                        />
                     </UploadCard>
                     <UploadCard title="Alternative Reward Images">
-                        <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, reward2: e.target.files?.[0] || null }))} />
+                        <FileUpload
+                            className="h-32 w-full p-4"
+                            fileName={files.reward2?.name || ''}
+                            onChange={(e) => setFiles((current) => ({ ...current, reward2: e.target.files?.[0] || null }))}
+                        />
                     </UploadCard>
                 </div>
+                */}
 
                 <div className="flex items-center justify-end gap-4 rounded-2xl border border-gray-200 bg-white p-6">
                     <button onClick={() => navigate('/quests')} className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700">Cancel</button>
-                    <button onClick={handlePublish} className="rounded-lg bg-brand-primary px-6 py-2.5 text-sm font-medium text-white">{editPostId ? 'Save Quest' : 'Publish Quest'}</button>
+                    <button disabled={isSubmitting} onClick={handlePublish} className="rounded-lg bg-brand-primary px-6 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Publishing...' : editPostId ? 'Save Quest' : 'Publish Quest'}</button>
                 </div>
             </div>
         </div>

@@ -46,7 +46,7 @@ const QuestBoard = () => {
     }, [dispatch]);
 
     const filtered = useMemo(() => {
-        let list = [...quests];
+        let list = quests.filter((quest) => quest.status === 'Open');
         if (activeFilter !== 'All') {
             list = list.filter((quest) => quest.tags.includes(activeFilter));
         }

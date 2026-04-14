@@ -42,6 +42,7 @@ const Login = () => {
                     <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" isPassword />
                 </div>
 
+                {/* Temporarily hidden until remember-me persistence is implemented as a real auth option.
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
                         <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary" />
@@ -52,6 +53,8 @@ const Login = () => {
 
                     <p className="text-sm text-gray-500">Use your registered email and password.</p>
                 </div>
+                */}
+                <p className="text-sm text-gray-500">Use your registered email and password.</p>
 
                 <div>
                     <Button type="submit">{authStatus === 'loading' ? 'Signing in...' : 'Sign in'}</Button>

@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 
-const FileUpload = ({ label, id, onChange, accept = "image/*", className = "", ...props }) => {
+const FileUpload = ({ label, id, onChange, accept = "image/*", className = "", fileName = '', hint = '', ...props }) => {
     const fileInputRef = useRef(null);
 
     const handleClick = () => {
@@ -39,6 +39,11 @@ const FileUpload = ({ label, id, onChange, accept = "image/*", className = "", .
                     </svg>
                 </div>
                 <span className="text-sm text-gray-500 font-medium">Upload Image</span>
+                {fileName ? (
+                    <span className="mt-2 max-w-full truncate px-4 text-center text-xs font-medium text-gray-700">{fileName}</span>
+                ) : (
+                    <span className="mt-2 px-4 text-center text-xs text-gray-400">{hint || 'One image per section'}</span>
+                )}
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import SafetyTipCard from '../components/SafetyTipCard';
 import { showToast } from '../store/uiSlice';
 import { apiRequest } from '../lib/api';
@@ -33,10 +33,12 @@ const ImageGrid = ({ images, altPrefix }) => {
 const QuestDetails = () => {
     const { id } = useParams();
     const dispatch = useDispatch();
+    const currentUser = useSelector((state) => state.auth.user);
     const [contactOpen, setContactOpen] = useState(false);
     const [quest, setQuest] = useState(null);
     const [selectedReward, setSelectedReward] = useState('primary');
     const [authorReviews, setAuthorReviews] = useState([]);
+    const [isClaiming, setIsClaiming] = useState(false);
 
     React.useEffect(() => {
         let active = true;
@@ -61,6 +63,10 @@ const QuestDetails = () => {
     if (!quest) {
         return <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading post...</div>;
     }
+
+    const isOwnPost = Boolean(currentUser?.id && quest.author.id && currentUser.id === quest.author.id);
+    const isOpen = quest.status === 'Open';
+    const claimDisabled = isOwnPost || !isOpen || isClaiming;
 
     return (
         <div className="mx-auto max-w-6xl">
@@ -137,16 +143,25 @@ const QuestDetails = () => {
                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                         <button
                             onClick={async () => {
+                                if (claimDisabled) {
+                                    return;
+                                }
                                 try {
+                                    setIsClaiming(true);
                                     await apiRequest(`/posts/${quest.id}/claim`, { method: 'POST' });
+                                    setQuest((current) => ({ ...current, status: 'In Progress' }));
                                     dispatch(showToast({ title: quest.type === 'service' ? 'Service booked.' : 'Task claimed.', variant: 'success' }));
+                                    window.location.assign('/active');
                                 } catch (error) {
                                     dispatch(showToast({ title: error.message || 'Failed to claim post.', variant: 'error' }));
+                                } finally {
+                                    setIsClaiming(false);
                                 }
                             }}
-                            className="rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-5 py-3 text-xl font-semibold text-white"
+                            disabled={claimDisabled}
+                            className="rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-5 py-3 text-xl font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {quest.type === 'service' ? 'Book Service' : 'Claim Task'}
+                            {isOwnPost ? 'Your Own Post' : !isOpen ? 'Unavailable' : isClaiming ? 'Processing...' : quest.type === 'service' ? 'Book Service' : 'Claim Task'}
                         </button>
                         <button
                             onClick={async () => {
@@ -174,6 +189,14 @@ const QuestDetails = () => {
                         <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
                             <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">Preferred contact</p>
                             <p className="mt-2 text-lg text-gray-800">{quest.author.contactInfo}</p>
+                        </div>
+                    )}
+
+                    {(isOwnPost || !isOpen) && (
+                        <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
+                            {isOwnPost
+                                ? 'You cannot claim or book your own post.'
+                                : 'This post is no longer open on the board.'}
                         </div>
                     )}
                 </div>

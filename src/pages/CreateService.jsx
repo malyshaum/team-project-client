@@ -35,6 +35,7 @@ const CreateService = () => {
         reward1: null,
         reward2: null
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     React.useEffect(() => {
         let active = true;
@@ -79,25 +80,28 @@ const CreateService = () => {
             { section: 'REWARD2', file: files.reward2 }
         ].filter((item) => item.file);
 
-        await Promise.all(
-            uploads.map(({ section, file }) => {
-                const formData = new FormData();
-                formData.append('file', file);
-                return apiFormRequest(`/posts/${postId}/images?section=${section}`, {
-                    method: 'POST',
-                    formData
-                });
-            })
-        );
+        for (const { section, file } of uploads) {
+            const formData = new FormData();
+            formData.append('file', file);
+            await apiFormRequest(`/posts/${postId}/images?section=${section}`, {
+                method: 'POST',
+                formData
+            });
+        }
     };
 
     const handlePublish = async () => {
+        if (isSubmitting) {
+            return;
+        }
+
         if (!form.title.trim() || !form.description.trim() || !form.reward.trim()) {
             dispatch(showToast({ title: 'Fill title, description, and main reward before publishing.', variant: 'warning' }));
             return;
         }
 
         try {
+            setIsSubmitting(true);
             const response = await apiRequest(editPostId ? `/posts/${editPostId}` : '/posts/services', {
                 method: editPostId ? 'PATCH' : 'POST',
                 body: {
@@ -114,6 +118,8 @@ const CreateService = () => {
             dispatch(showToast({ title: editPostId ? 'Service updated.' : 'Service post published.', variant: 'success' }));
         } catch (error) {
             dispatch(showToast({ title: error.message || 'Failed to publish service.', variant: 'error' }));
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -134,6 +140,7 @@ const CreateService = () => {
 
                 <div className="rounded-2xl border border-gray-200 bg-white p-8">
                     <h2 className="mb-1 text-lg font-semibold text-gray-900">Tags</h2>
+                    <p className="mb-4 text-sm text-gray-500">{selectedTags.length ? `${selectedTags.length} tag(s) selected` : 'Pick tags so the post appears in board filters.'}</p>
                     <TagSelector
                         options={availableTags}
                         selectedTags={selectedTags}
@@ -141,9 +148,15 @@ const CreateService = () => {
                     />
                 </div>
 
+                {/* Temporarily hidden until image uploads are stable in production.
                 <UploadCard title="Description Images">
-                    <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, description: e.target.files?.[0] || null }))} />
+                    <FileUpload
+                        className="h-32 w-full p-4"
+                        fileName={files.description?.name || ''}
+                        onChange={(e) => setFiles((current) => ({ ...current, description: e.target.files?.[0] || null }))}
+                    />
                 </UploadCard>
+                */}
 
                 <div className="grid gap-6 md:grid-cols-2">
                     <div className="rounded-2xl border border-gray-200 bg-white p-8">
@@ -156,18 +169,28 @@ const CreateService = () => {
                     </div>
                 </div>
 
+                {/* Temporarily hidden until image uploads are stable in production.
                 <div className="grid gap-6 md:grid-cols-2">
                     <UploadCard title="Primary Reward Images">
-                        <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, reward1: e.target.files?.[0] || null }))} />
+                        <FileUpload
+                            className="h-32 w-full p-4"
+                            fileName={files.reward1?.name || ''}
+                            onChange={(e) => setFiles((current) => ({ ...current, reward1: e.target.files?.[0] || null }))}
+                        />
                     </UploadCard>
                     <UploadCard title="Alternative Reward Images">
-                        <FileUpload className="h-32 w-full p-4" onChange={(e) => setFiles((current) => ({ ...current, reward2: e.target.files?.[0] || null }))} />
+                        <FileUpload
+                            className="h-32 w-full p-4"
+                            fileName={files.reward2?.name || ''}
+                            onChange={(e) => setFiles((current) => ({ ...current, reward2: e.target.files?.[0] || null }))}
+                        />
                     </UploadCard>
                 </div>
+                */}
 
                 <div className="flex justify-end gap-4 pt-4">
                     <Button variant="outline" onClick={() => navigate('/provider')} className="w-auto px-6">Cancel</Button>
-                    <Button onClick={handlePublish} className="w-auto px-8 py-2.5">{editPostId ? 'Save Service' : 'Publish Service'}</Button>
+                    <Button disabled={isSubmitting} onClick={handlePublish} className="w-auto px-8 py-2.5 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Publishing...' : editPostId ? 'Save Service' : 'Publish Service'}</Button>
                 </div>
             </div>
         </div>
