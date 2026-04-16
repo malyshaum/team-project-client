@@ -49,17 +49,39 @@ export const fetchMyProfile = createAsyncThunk('profile/fetchMyProfile', async (
 
 export const updateMyProfile = createAsyncThunk('profile/updateMyProfile', async (payload, thunkAPI) => {
     try {
+        const state = thunkAPI.getState();
+        const current = state.profile.general;
+        const body = {};
+
+        if (payload.username !== current.username) {
+            body.username = payload.username;
+        }
+        if (payload.email !== current.email) {
+            body.email = payload.email;
+        }
+        if (payload.university !== current.university) {
+            body.university = payload.university;
+        }
+        if (payload.studyProgram !== current.studyProgram) {
+            body.studyProgram = payload.studyProgram;
+        }
+        if (String(payload.yearOfStudy ?? '') !== String(current.yearOfStudy ?? '')) {
+            body.yearOfStudy = Number(payload.yearOfStudy);
+        }
+        if ((payload.contactInfo || '') !== (current.contactInfo || '')) {
+            body.contactInfo = payload.contactInfo;
+        }
+        if ((payload.bio || '') !== (current.bio || '')) {
+            body.aboutMe = payload.bio;
+        }
+
+        if (Object.keys(body).length === 0) {
+            return await thunkAPI.dispatch(fetchMyProfile()).unwrap();
+        }
+
         await apiRequest('/me', {
             method: 'PATCH',
-            body: {
-                username: payload.username,
-                email: payload.email,
-                university: payload.university,
-                studyProgram: payload.studyProgram,
-                yearOfStudy: Number(payload.yearOfStudy),
-                contactInfo: payload.contactInfo,
-                aboutMe: payload.bio
-            }
+            body
         });
 
         return await thunkAPI.dispatch(fetchMyProfile()).unwrap();

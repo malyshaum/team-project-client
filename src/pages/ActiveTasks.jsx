@@ -11,11 +11,27 @@ const statusClasses = {
     'In Progress': 'border border-yellow-200 bg-yellow-50 text-yellow-600'
 };
 
+const StarPicker = ({ value, onChange }) => (
+    <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((stars) => (
+            <button
+                key={stars}
+                type="button"
+                onClick={() => onChange(stars)}
+                className={`text-2xl ${stars <= value ? 'text-amber-400' : 'text-gray-300'}`}
+            >
+                ★
+            </button>
+        ))}
+    </div>
+);
+
 const ActiveTasks = () => {
     const dispatch = useDispatch();
     const [activeTab, setActiveTab] = useState(tabs[0]);
     const [tasks, setTasks] = React.useState({ accepted: [], requested: [] });
     const [busyTaskId, setBusyTaskId] = React.useState(null);
+    const [reviewDrafts, setReviewDrafts] = React.useState({});
 
     React.useEffect(() => {
         let active = true;
@@ -128,33 +144,91 @@ const ActiveTasks = () => {
                                             dispatch(showToast({ title: 'Reviews are available only after the task is completed.', variant: 'warning' }));
                                             return;
                                         }
-                                        const comment = window.prompt(`Leave a review for "${task.title}"`);
-                                        if (comment === null) {
-                                            return;
-                                        }
-                                        try {
-                                            setBusyTaskId(task.id);
-                                            await apiRequest(`/active-tasks/${task.id}/reviews`, {
-                                                method: 'POST',
-                                                body: {
-                                                    stars: 5,
-                                                    comment
-                                                }
-                                            });
-                                            dispatch(showToast({ title: 'Review submitted.', variant: 'success' }));
-                                        } catch (error) {
-                                            dispatch(showToast({ title: error.message || 'Failed to submit review.', variant: 'error' }));
-                                        } finally {
-                                            setBusyTaskId(null);
-                                        }
+                                        setReviewDrafts((current) => ({
+                                            ...current,
+                                            [task.id]: current[task.id] || { open: true, stars: 5, comment: '' }
+                                        }));
                                     }}
                                     className="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2.5 font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <span className="mr-2">☆</span>
-                                    Leave Review
+                                    {task.hasReviewed ? 'Review Submitted' : 'Leave Review'}
                                 </button>
                             </div>
                         </div>
+                        {reviewDrafts[task.id]?.open && (
+                            <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                                <p className="text-sm font-semibold text-gray-900">Leave a review</p>
+                                <p className="mt-1 text-sm text-gray-500">Select a star rating and add a short comment.</p>
+                                <div className="mt-4">
+                                    <StarPicker
+                                        value={reviewDrafts[task.id]?.stars || 5}
+                                        onChange={(stars) => setReviewDrafts((current) => ({
+                                            ...current,
+                                            [task.id]: { ...current[task.id], stars }
+                                        }))}
+                                    />
+                                </div>
+                                <textarea
+                                    value={reviewDrafts[task.id]?.comment || ''}
+                                    onChange={(event) => setReviewDrafts((current) => ({
+                                        ...current,
+                                        [task.id]: { ...current[task.id], comment: event.target.value }
+                                    }))}
+                                    rows={4}
+                                    className="mt-4 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
+                                    placeholder="Describe how the interaction went."
+                                />
+                                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setReviewDrafts((current) => {
+                                            const next = { ...current };
+                                            delete next[task.id];
+                                            return next;
+                                        })}
+                                        className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={busyTaskId === task.id}
+                                        onClick={async () => {
+                                            try {
+                                                setBusyTaskId(task.id);
+                                                await apiRequest(`/active-tasks/${task.id}/reviews`, {
+                                                    method: 'POST',
+                                                    body: {
+                                                        stars: reviewDrafts[task.id]?.stars || 5,
+                                                        comment: reviewDrafts[task.id]?.comment || ''
+                                                    }
+                                                });
+                                                setTasks((current) => ({
+                                                    ...current,
+                                                    [activeTab === tabs[0] ? 'accepted' : 'requested']: current[activeTab === tabs[0] ? 'accepted' : 'requested'].map((item) => (
+                                                        item.id === task.id ? { ...item, hasReviewed: true, canReview: false } : item
+                                                    ))
+                                                }));
+                                                setReviewDrafts((current) => {
+                                                    const next = { ...current };
+                                                    delete next[task.id];
+                                                    return next;
+                                                });
+                                                dispatch(showToast({ title: 'Review submitted.', variant: 'success' }));
+                                            } catch (error) {
+                                                dispatch(showToast({ title: error.message || 'Failed to submit review.', variant: 'error' }));
+                                            } finally {
+                                                setBusyTaskId(null);
+                                            }
+                                        }}
+                                        className="rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {busyTaskId === task.id ? 'Submitting...' : 'Submit Review'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </article>
                 ))}
             </div>

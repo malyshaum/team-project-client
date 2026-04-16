@@ -35,6 +35,8 @@ const ManageRequest = () => {
         return <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading post...</div>;
     }
 
+    const showApplicantsFlow = request.type === 'service';
+
     return (
         <div className="mx-auto max-w-5xl">
             <div className="mb-6 flex items-start gap-4">
@@ -104,75 +106,73 @@ const ManageRequest = () => {
                 </div>
             </div>
 
-            <h2 className="mb-4 text-4xl font-bold text-gray-900">Applicants ({applicants.length})</h2>
+            {showApplicantsFlow ? (
+                <>
+                    <h2 className="mb-4 text-4xl font-bold text-gray-900">Applicants ({applicants.length})</h2>
 
-            <div className="space-y-4">
-                {applicants.length === 0 && (
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
-                        No applicants yet.
-                    </div>
-                )}
-                {applicants.map((applicant) => (
-                    <article key={applicant.id} className="rounded-2xl border border-gray-200 bg-white p-5">
-                        <div className="mb-3 flex items-start justify-between gap-4">
-                            <div className="flex gap-4">
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-medium text-brand-secondary">
-                                    {applicant.initials}
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-semibold text-gray-900">{applicant.name}</h3>
-                                    <p className="text-gray-500">{applicant.major}</p>
-                                    <p className="mt-1 text-gray-700">⭐ {applicant.rating} <span className="text-gray-500">({applicant.reviews} reviews)</span></p>
-                                </div>
+                    <div className="space-y-4">
+                        {applicants.length === 0 && (
+                            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+                                No applicants yet.
                             </div>
-                            <p className="text-gray-500">{applicant.time}</p>
-                        </div>
+                        )}
+                        {applicants.map((applicant) => (
+                            <article key={applicant.id} className="rounded-2xl border border-gray-200 bg-white p-5">
+                                <div className="mb-3 flex items-start justify-between gap-4">
+                                    <div className="flex gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-medium text-brand-secondary">
+                                            {applicant.initials}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-semibold text-gray-900">{applicant.name}</h3>
+                                            <p className="text-gray-500">{applicant.major}</p>
+                                            <p className="mt-1 text-gray-700">⭐ {applicant.rating} <span className="text-gray-500">({applicant.reviews} reviews)</span></p>
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-500">{applicant.time}</p>
+                                </div>
 
-                        <p className="text-gray-600">{applicant.message}</p>
+                                <p className="text-gray-600">{applicant.message}</p>
 
-                        <div className="mt-4 rounded-xl bg-gray-50 p-4">
-                            <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">About Me</p>
-                            <p className="mt-2 text-gray-700">{applicant.aboutMe}</p>
-                            <p className="mt-3 text-sm text-gray-500">Contact info: {applicant.contactInfo}</p>
-                        </div>
+                                <div className="mt-4 rounded-xl bg-gray-50 p-4">
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">About Me</p>
+                                    <p className="mt-2 text-gray-700">{applicant.aboutMe}</p>
+                                    <p className="mt-3 text-sm text-gray-500">Contact info: {applicant.contactInfo}</p>
+                                </div>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        setBusyApplicantId(applicant.id);
-                                        await apiRequest(request?.type === 'service' ? `/posts/${requestId}/accept` : `/posts/${requestId}/select-performer`, {
-                                            method: 'POST',
-                                            body: request?.type === 'service'
-                                                ? { requesterUserId: applicant.id }
-                                                : { applicantId: applicant.id }
-                                        });
-                                        dispatch(showToast({ title: request?.type === 'service' ? `${applicant.name} accepted for the service.` : `${applicant.name} selected as performer.`, variant: 'success' }));
-                                        navigate('/my-requests');
-                                    } catch (error) {
-                                        dispatch(showToast({ title: error.message || 'Failed to select performer.', variant: 'error' }));
-                                    } finally {
-                                        setBusyApplicantId(null);
-                                    }
-                                }}
-                                disabled={busyApplicantId === applicant.id}
-                                className="inline-flex items-center rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-5 py-2.5 text-xl font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                <span className="mr-2">⚯</span>
-                                {busyApplicantId === applicant.id ? 'Saving...' : request?.type === 'service' ? 'Accept Requester' : 'Choose as Performer'}
-                            </button>
-                            {/* Temporarily hidden because this button only duplicated already visible info in a toast.
-                            <button
-                                onClick={() => dispatch(showToast({ title: applicant.aboutMe, variant: 'info' }))}
-                                className="rounded-xl border border-gray-300 px-5 py-2.5 text-xl font-medium text-gray-800 hover:bg-gray-50"
-                            >
-                                About Me
-                            </button>
-                            */}
-                        </div>
-                    </article>
-                ))}
-            </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                setBusyApplicantId(applicant.id);
+                                                await apiRequest(`/posts/${requestId}/accept`, {
+                                                    method: 'POST',
+                                                    body: { requesterUserId: applicant.id }
+                                                });
+                                                dispatch(showToast({ title: `${applicant.name} accepted for the service.`, variant: 'success' }));
+                                                navigate('/my-requests');
+                                            } catch (error) {
+                                                dispatch(showToast({ title: error.message || 'Failed to accept requester.', variant: 'error' }));
+                                            } finally {
+                                                setBusyApplicantId(null);
+                                            }
+                                        }}
+                                        disabled={busyApplicantId === applicant.id}
+                                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-btn-start to-btn-end px-5 py-2.5 text-xl font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        <span className="mr-2">⚯</span>
+                                        {busyApplicantId === applicant.id ? 'Saving...' : 'Accept Requester'}
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
+                    Task flow is currently first-come-first-served: the first user who claims the task starts the interaction immediately. Applicant selection is hidden to match the active backend behavior.
+                </div>
+            )}
         </div>
     );
 };

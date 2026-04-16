@@ -35,6 +35,11 @@ const QuestCard = ({ quest }) => {
                     <h4 className="mb-1 text-base font-bold text-gray-900 transition-colors group-hover:text-brand-primary">{quest.title}</h4>
                     <p className="mb-3 line-clamp-2 text-sm text-gray-600">{quest.description}</p>
                     <div className="mb-4 flex flex-wrap gap-2">
+                        {quest.isOverdue && (
+                            <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-600">
+                                Overdue
+                            </span>
+                        )}
                         {quest.tags.map((tag) => (
                             <span key={tag} className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
                                 {tag}
@@ -50,7 +55,9 @@ const QuestCard = ({ quest }) => {
                         {quest.applicants > 0 && <span>{quest.applicants} applied</span>}
                     </div>
                     <div className="text-right">
+                        <div className="text-xs uppercase tracking-wide text-gray-400">Primary</div>
                         <div className="text-sm font-bold text-brand-primary">{quest.reward}</div>
+                        <div className="mt-1 text-xs uppercase tracking-wide text-gray-400">Alternative</div>
                         <div>{quest.alternativeReward}</div>
                     </div>
                 </div>

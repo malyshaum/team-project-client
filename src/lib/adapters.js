@@ -38,7 +38,15 @@ const normalizeStatus = (value, fallback = 'Open') => {
     return statusMap[normalized] || value;
 };
 
-const formatDateLabel = (iso, prefix = '') => {
+const hasExplicitTime = (iso) => {
+    if (!iso || typeof iso !== 'string') {
+        return false;
+    }
+
+    return /T\d{2}:\d{2}/.test(iso);
+};
+
+export const formatDateTimeLabel = (iso, prefix = '') => {
     if (!iso) {
         return 'Flexible';
     }
@@ -48,12 +56,39 @@ const formatDateLabel = (iso, prefix = '') => {
         return iso;
     }
 
-    return `${prefix}${date.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-    })}`.trim();
+    const options = hasExplicitTime(iso)
+        ? {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }
+        : {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        };
+
+    return `${prefix}${date.toLocaleString('en-GB', options)}`.trim();
 };
+
+export const formatDateTimeLocalValue = (iso) => {
+    if (!iso) {
+        return '';
+    }
+
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60000);
+    return localDate.toISOString().slice(0, 16);
+};
+
+const formatDateLabel = (iso, prefix = '') => formatDateTimeLabel(iso, prefix);
 
 const formatRelative = (iso, fallback = 'just now') => {
     if (!iso) {
@@ -84,6 +119,8 @@ const formatRelative = (iso, fallback = 'just now') => {
 export const mapPostListItemToCard = (post) => {
     const authorName = post.author?.username || 'student';
     const status = normalizeStatus(post.status);
+    const deadline = formatDateLabel(post.deadline, 'Due ');
+    const isOverdue = Boolean(post.deadline && new Date(post.deadline).getTime() < Date.now() && status === 'Open');
     return {
         id: post.id,
         type: post.type,
@@ -99,18 +136,20 @@ export const mapPostListItemToCard = (post) => {
         description: post.description,
         tags: post.tags || [],
         postedTime: formatRelative(post.postedAt, 'just now'),
-        deadline: formatDateLabel(post.deadline, 'Due '),
+        deadline,
         applicants: post.applicantsCount || 0,
         reward: formatCurrencyLike(post.primaryReward),
         alternativeReward: post.alternativeReward || 'Optional reward',
         status,
-        rawStatus: post.status
+        rawStatus: post.status,
+        isOverdue
     };
 };
 
 export const mapPostDetailToQuest = (post) => {
     const authorName = post.author?.username || 'student';
     const status = normalizeStatus(post.status);
+    const isOverdue = Boolean(post.deadline && new Date(post.deadline).getTime() < Date.now() && status === 'Open');
     return {
         id: post.id,
         type: post.type,
@@ -145,7 +184,8 @@ export const mapPostDetailToQuest = (post) => {
             providerRating: Number(post.ratings?.asProvider || 0).toFixed(1),
             reviews: post.reviewsCount || 0,
             recentPosts: []
-        }
+        },
+        isOverdue
     };
 };
 
@@ -240,6 +280,7 @@ export const mapActiveTaskToCard = (task) => ({
     rawStatus: task.status,
     canReview: normalizeStatus(task.status, 'In Progress') === 'Completed',
     canComplete: normalizeStatus(task.status, 'In Progress') === 'In Progress',
+    hasReviewed: false,
     amount: task.amount || 'Not specified',
     dateLine: task.startedAt ? `Started ${formatRelative(task.startedAt, 'recently')}` : 'Started recently'
 });

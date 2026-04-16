@@ -13,14 +13,18 @@ const EditProfile = () => {
     const dispatch = useDispatch();
     const general = useSelector((state) => state.profile.general);
     const [generalForm, setGeneralForm] = useState(general);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleSave = async () => {
         try {
+            setIsSaving(true);
             await dispatch(updateMyProfile(generalForm)).unwrap();
             dispatch(showToast({ title: 'Profile updated.', variant: 'success' }));
             navigate('/profile');
         } catch (error) {
             dispatch(showToast({ title: error || 'Failed to update profile.', variant: 'error' }));
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -107,8 +111,8 @@ const EditProfile = () => {
                         <Button variant="outline" onClick={() => navigate(-1)} className="w-auto px-6">
                             Cancel
                         </Button>
-                        <Button onClick={handleSave} className="w-auto px-6">
-                            Save Changes
+                        <Button disabled={isSaving} onClick={handleSave} className="w-auto px-6 disabled:cursor-not-allowed disabled:opacity-60">
+                            {isSaving ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>
                 </div>

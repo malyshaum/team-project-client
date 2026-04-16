@@ -26,8 +26,8 @@ const ProviderCard = ({ provider }) => {
                             </div>
                         </div>
                     </div>
-                    <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-                        Service
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${provider.status === 'Open' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>
+                        {provider.status === 'Open' ? 'Service' : provider.status}
                     </span>
                 </div>
 
@@ -45,8 +45,9 @@ const ProviderCard = ({ provider }) => {
 
                 <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-4">
                     <div>
-                        <span className="mb-0.5 block text-xs text-gray-500">Reward</span>
+                        <span className="mb-0.5 block text-xs text-gray-500">Primary Reward</span>
                         <span className="text-base font-bold text-brand-primary">{provider.reward}</span>
+                        <span className="mt-1 block text-[11px] uppercase tracking-wide text-gray-400">Alternative reward</span>
                         <span className="block text-xs text-gray-500">{provider.alternativeReward}</span>
                     </div>
                     <span className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700">

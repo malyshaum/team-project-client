@@ -25,6 +25,8 @@ const Profile = () => {
         const total = reviews.reduce((sum, item) => sum + item.rating, 0);
         return reviews.length ? (total / reviews.length).toFixed(1) : '0.0';
     }, [reviews]);
+    const requesterRating = Number(stats.completedAsRequester || 0) > 0 ? `⭐ ${stats.requesterRating}` : 'N/A';
+    const providerRating = Number(stats.completedAsProvider || 0) > 0 ? `⭐ ${stats.providerRating}` : 'N/A';
 
     return (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[310px_1fr]">
@@ -58,11 +60,11 @@ const Profile = () => {
                     <div className="mt-4 space-y-3">
                         <div className="flex items-center justify-between">
                             <span className="text-gray-500">As requester</span>
-                            <span className="text-xl font-bold text-gray-900">⭐ {stats.requesterRating}</span>
+                            <span className="text-xl font-bold text-gray-900">{requesterRating}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-gray-500">As provider</span>
-                            <span className="text-xl font-bold text-gray-900">⭐ {stats.providerRating}</span>
+                            <span className="text-xl font-bold text-gray-900">{providerRating}</span>
                         </div>
                     </div>
                 </StatCard>

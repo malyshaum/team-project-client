@@ -87,6 +87,12 @@ const QuestDetails = () => {
                         <span>{quest.deadline}</span>
                         <span>•</span>
                         <span className="text-green-600">{quest.status}</span>
+                        {quest.isOverdue && (
+                            <>
+                                <span>•</span>
+                                <span className="font-medium text-red-600">Overdue</span>
+                            </>
+                        )}
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -108,7 +114,8 @@ const QuestDetails = () => {
                     </div>
 
                     <div className="mt-6">
-                        <h2 className="mb-3 text-3xl font-semibold text-gray-900">Select Reward</h2>
+                        <h2 className="mb-3 text-3xl font-semibold text-gray-900">Reward Options</h2>
+                        <p className="mb-4 text-sm text-gray-500">Pick the reward you prefer before you continue. Text rewards and optional alternatives are shown separately.</p>
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                             {Object.entries(quest.rewards).map(([key, reward]) => (
                                 <button
@@ -120,7 +127,7 @@ const QuestDetails = () => {
                                 >
                                     <p className="text-sm font-semibold uppercase tracking-wider text-gray-500">{rewardLabels[key]}</p>
                                     <p className="mt-2 text-3xl font-bold text-gray-900">{reward.value}</p>
-                                    <p className="mt-1 text-gray-500">{reward.description}</p>
+                                    <p className="mt-1 text-sm text-gray-500">{reward.description}</p>
                                     {reward.images?.length > 0 ? (
                                         <div className="mt-4 grid gap-2">
                                             {reward.images.map((image, index) => (

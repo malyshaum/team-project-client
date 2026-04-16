@@ -7,6 +7,7 @@ import FileUpload from '../components/FileUpload';
 import TagSelector from '../components/TagSelector';
 import { showToast } from '../store/uiSlice';
 import { apiFormRequest, apiRequest } from '../lib/api';
+import { formatDateTimeLocalValue } from '../lib/adapters';
 
 const UploadCard = ({ title, children }) => (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
@@ -57,7 +58,7 @@ const CreateQuest = () => {
                     setForm({
                         title: postResponse.title || '',
                         description: postResponse.description || '',
-                        dueDate: postResponse.deadline ? new Date(postResponse.deadline).toISOString().slice(0, 16) : '',
+                        dueDate: formatDateTimeLocalValue(postResponse.deadline),
                         reward: postResponse.primaryReward?.value || '',
                         alternativeReward: postResponse.alternativeReward?.value || ''
                     });

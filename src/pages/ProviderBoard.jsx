@@ -46,7 +46,7 @@ const ProviderBoard = () => {
     }, [dispatch]);
 
     const filtered = useMemo(() => {
-        let list = providers.filter((provider) => provider.status === 'Open');
+        let list = [...providers];
         if (activeFilter !== 'All') {
             list = list.filter((provider) => provider.tags.includes(activeFilter));
         }
