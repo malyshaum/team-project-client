@@ -200,7 +200,7 @@ const CreateService = () => {
                 <div className="grid gap-6 md:grid-cols-2">
                     <div className="rounded-2xl border border-gray-200 bg-white p-8">
                         <h2 className="mb-1 text-lg font-semibold text-gray-900">Primary Reward</h2>
-                        <Input label="Reward" value={form.reward} onChange={(e) => setForm({ ...form, reward: e.target.value })} placeholder='e.g. "5.00€/hour"' />
+                        <Input label="Reward" value={form.reward} onChange={(e) => setForm({ ...form, reward: e.target.value })} placeholder='e.g. "5.00 per hour"' />
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-8">
                         <h2 className="mb-1 text-lg font-semibold text-gray-900">Alternative Reward</h2>

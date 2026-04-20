@@ -219,7 +219,7 @@ const CreateQuest = () => {
                             label="Reward"
                             value={form.reward}
                             onChange={(e) => setForm({ ...form, reward: e.target.value })}
-                            placeholder="e.g. 5.00€ or Coffee"
+                            placeholder="e.g. 5.00 or Coffee"
                         />
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-8">

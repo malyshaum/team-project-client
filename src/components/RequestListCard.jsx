@@ -25,7 +25,7 @@ const RequestListCard = ({ request, onView, onManage }) => {
                     <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
                         <div>Posted {request.postedDate}</div>
                         <div>{request.type === 'service' ? 'Availability' : 'Due'} {request.dueDate}</div>
-                        <div>{request.applicants} applicants</div>
+                        {request.applicants > 0 && <div>{request.applicants} applicants</div>}
                     </div>
 
                     {request.performer && (
