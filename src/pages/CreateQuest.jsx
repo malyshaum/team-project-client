@@ -31,6 +31,7 @@ const CreateQuest = () => {
     });
     const [availableTags, setAvailableTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState([]);
+    const [tagInput, setTagInput] = useState('');
     const [files, setFiles] = useState({
         description: null,
         reward1: null,
@@ -133,6 +134,20 @@ const CreateQuest = () => {
         }
     };
 
+    const addTypedTags = () => {
+        const parsedTags = tagInput
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+        if (!parsedTags.length) {
+            return;
+        }
+
+        setSelectedTags((prev) => Array.from(new Set([...prev, ...parsedTags])));
+        setTagInput('');
+    };
+
     return (
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
             <div className="mb-8 flex items-center">
@@ -156,6 +171,30 @@ const CreateQuest = () => {
                 <div className="rounded-2xl border border-gray-200 bg-white p-8">
                     <h2 className="mb-1 text-lg font-semibold text-gray-900">Tags</h2>
                     <p className="mb-4 text-sm text-gray-500">{selectedTags.length ? `${selectedTags.length} tag(s) selected` : 'Pick tags so the post appears in board filters.'}</p>
+                    <div className="mb-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+                        <Input
+                            label="Type tags manually"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addTypedTags();
+                                }
+                            }}
+                            placeholder="e.g. Java, urgent, homework"
+                        />
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                            <p className="text-xs text-gray-500">Use commas between tags, then press Enter or Add.</p>
+                            <button
+                                type="button"
+                                onClick={addTypedTags}
+                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+                            >
+                                Add tags
+                            </button>
+                        </div>
+                    </div>
                     <TagSelector
                         options={availableTags}
                         selectedTags={selectedTags}

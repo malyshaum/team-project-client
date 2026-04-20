@@ -16,7 +16,6 @@ const createEmptyProfile = () => ({
         joined: 'Joined recently'
     },
     stats: {
-        requesterRating: '0.0',
         providerRating: '0.0',
         completedTasks: 0,
         completedAsRequester: 0,
@@ -25,8 +24,7 @@ const createEmptyProfile = () => ({
             { label: 'Completed as requester', value: '0' },
             { label: 'Completed as provider', value: '0' },
             { label: 'Open posts', value: '0' },
-            { label: 'In progress', value: '0' },
-            { label: 'Total earned', value: '0€', valueClass: 'text-brand-secondary' }
+            { label: 'In progress', value: '0' }
         ],
         badges: ['QuestBoard Member']
     },

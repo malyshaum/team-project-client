@@ -21,8 +21,7 @@ const QuestCard = ({ quest }) => {
                             <h3 className="text-sm font-semibold text-gray-900 transition-colors group-hover:text-brand-primary">{quest.author}</h3>
                             <p className="text-xs text-gray-500">{quest.authorMeta}</p>
                             <div className="flex items-center text-xs text-gray-500">
-                                <span className="font-medium text-gray-900">Requester ⭐ {quest.requesterRating}</span>
-                                <span className="ml-2">Provider ⭐ {quest.providerRating}</span>
+                                <span className="font-medium text-gray-900">Provider ⭐ {quest.providerRating}</span>
                             </div>
                         </div>
                     </div>

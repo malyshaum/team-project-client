@@ -11,6 +11,26 @@ const rewardLabels = {
     alternative: 'Alternative Reward'
 };
 
+const extractContactInfo = (payload, fallback = '') => {
+    if (!payload) {
+        return fallback;
+    }
+
+    if (typeof payload === 'string') {
+        return payload || fallback;
+    }
+
+    return (
+        payload.contactInfo ||
+        payload.contact ||
+        payload.value ||
+        payload.data?.contactInfo ||
+        payload.data?.contact ||
+        payload.author?.contactInfo ||
+        fallback
+    );
+};
+
 const ImageGrid = ({ images, altPrefix }) => {
     if (!images?.length) {
         return null;
@@ -174,14 +194,18 @@ const QuestDetails = () => {
                             onClick={async () => {
                                 try {
                                     const response = await apiRequest(`/posts/${quest.id}/contact`, { method: 'POST' });
+                                    const revealedContact = extractContactInfo(response, currentUser?.contactInfo || quest.author.contactInfo);
                                     setQuest((current) => ({
                                         ...current,
                                         author: {
                                             ...current.author,
-                                            contactInfo: response.contactInfo || current.author.contactInfo
+                                            contactInfo: extractContactInfo(response, current.author.contactInfo)
                                         }
                                     }));
-                                    setContactOpen((current) => !current);
+                                    if (!revealedContact || /hidden/i.test(revealedContact)) {
+                                        throw new Error('Contact info is not available for this post yet.');
+                                    }
+                                    setContactOpen(true);
                                 } catch (error) {
                                     dispatch(showToast({ title: error.message || 'Failed to reveal contact info.', variant: 'error' }));
                                 }
@@ -221,12 +245,6 @@ const QuestDetails = () => {
                         </div>
 
                         <div className="mb-4 grid gap-3">
-                            <div className="rounded-xl border border-gray-200 px-3 py-2">
-                                <p className="flex items-center justify-between text-gray-600">
-                                    <span>Rating as requester</span>
-                                    <span className="font-semibold text-gray-900">⭐ {quest.author.requesterRating}</span>
-                                </p>
-                            </div>
                             <div className="rounded-xl border border-gray-200 px-3 py-2">
                                 <p className="flex items-center justify-between text-gray-600">
                                     <span>Rating as provider</span>

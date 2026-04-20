@@ -129,7 +129,6 @@ export const mapPostListItemToCard = (post) => {
         author: authorName,
         name: authorName,
         authorMeta: formatAuthorMeta(post.author?.studyProgram, post.author?.yearOfStudy),
-        requesterRating: Number(post.ratings?.asRequester || 0).toFixed(1),
         providerRating: Number(post.ratings?.asProvider || 0).toFixed(1),
         reviews: post.reviewsCount || 0,
         title: post.title,
@@ -180,7 +179,6 @@ export const mapPostDetailToQuest = (post) => {
             meta: formatAuthorMeta(post.author?.studyProgram, post.author?.yearOfStudy),
             aboutMe: post.author?.aboutMe || 'No bio provided yet.',
             contactInfo: post.author?.contactInfo || 'Contact info is hidden.',
-            requesterRating: Number(post.ratings?.asRequester || 0).toFixed(1),
             providerRating: Number(post.ratings?.asProvider || 0).toFixed(1),
             reviews: post.reviewsCount || 0,
             recentPosts: []
@@ -214,7 +212,6 @@ export const mapMeResponseToProfile = (me, reviews = [], activeTasks = { accepte
             joined: me.joinedAt ? `Joined ${formatDateLabel(me.joinedAt)}` : 'Joined recently'
         },
         stats: {
-            requesterRating: Number(me.ratings?.asRequester || 0).toFixed(1),
             providerRating: Number(me.ratings?.asProvider || 0).toFixed(1),
             completedTasks: (me.stats?.completedAsRequester || 0) + (me.stats?.completedAsProvider || 0),
             completedAsRequester: me.stats?.completedAsRequester || 0,
@@ -223,8 +220,7 @@ export const mapMeResponseToProfile = (me, reviews = [], activeTasks = { accepte
                 { label: 'Completed as requester', value: String(me.stats?.completedAsRequester || 0) },
                 { label: 'Completed as provider', value: String(me.stats?.completedAsProvider || 0) },
                 { label: 'Open posts', value: String(me.stats?.openPosts || 0) },
-                { label: 'In progress', value: String(me.stats?.inProgress || 0) },
-                { label: 'Total earned', value: `${me.stats?.totalEarned || 0}€`, valueClass: 'text-brand-secondary' }
+                { label: 'In progress', value: String(me.stats?.inProgress || 0) }
             ],
             badges: me.badges?.length ? me.badges : ['QuestBoard Member']
         },

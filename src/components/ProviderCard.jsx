@@ -21,8 +21,7 @@ const ProviderCard = ({ provider }) => {
                             <h3 className="text-sm font-semibold text-gray-900">{provider.name}</h3>
                             <p className="text-xs text-gray-500">{provider.authorMeta}</p>
                             <div className="flex items-center text-xs text-gray-500">
-                                <span>Requester ⭐ {provider.requesterRating}</span>
-                                <span className="ml-2">Provider ⭐ {provider.providerRating}</span>
+                                <span>Provider ⭐ {provider.providerRating}</span>
                             </div>
                         </div>
                     </div>
